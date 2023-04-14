@@ -4,6 +4,95 @@ library(keras)
 library(tensorflow)
 library(caret)
 library(devtools)
+library(conflicted)
+library(tensorflow)
+# Set the conflict resolution policy for filter() and lag() to "warn"
+conflict_prefer("filter", "dplyr")
+conflict_prefer("lag", "dplyr")
+
+library(reticulate)
+use_python(Sys.which("python"))
+
+```
+
+```{r}
+library(reticulate)
+
+# specify the path to your desired Python environment
+my_env <- "C:/Users/zhizh/Anaconda3/envs/my_env"
+
+# activate the environment
+use_python(Sys.which("python"))
+Sys.setenv(RETICULATE_PYTHON = "C:/path/to/anaconda/python.exe")
+
+use_python(my_env)
+
+# check if tensorflow is installed in the environment
+py_installed_packages()$tensorflow
+
+# Verify that TensorFlow is working
+hello <- tf$constant('Hello, TensorFlow!')
+sess <- tf$Session()
+sess$run(hello)
+
+
+# Install numpy and pandas in the current conda environment
+library(reticulate)
+conda_install(c("numpy", "pandas"))
+
+# Load numpy and pandas
+library(numpy)
+library(pandas)
+
+```
+
+
+```{r}
+# Load the training dataset
+training <- read.csv("C:/Users/zhizh/OneDrive/Desktop/Kidney_Stone/train.csv")
+
+# Load the testing dataset
+testing <- read.csv("C:/Users/zhizh/OneDrive/Desktop/Kidney_Stone/test.csv")
+
+
+```
+
+
+```{r}
+
+# Split the data into input (X) and output (y) variables
+X_train <- training[, 1:8] # replace with the appropriate column names
+y_train <- training[, 8] # replace with the appropriate column name
+
+
+
+# Define the model architecture
+model <- keras_model_sequential() %>%
+  layer_dense(units = 12, input_shape = dim(X_train)[2], activation = "relu") %>%
+  layer_dense(units = 1, activation = "sigmoid")
+
+# Compile the model
+model %>% compile(
+  loss = "binary_crossentropy",
+  optimizer = "adam",
+  metrics = list("accuracy")
+)
+
+# Train the model
+history <- model %>% fit(
+  X_train, y_train,
+  epochs = 10,
+  batch_size = 32,
+  validation_split = 0.2
+)
+
+# Evaluate the model on the test set
+testing <- read.csv("testing.csv")
+X_test <- testing[, 1:8] # replace with the appropriate column names
+y_test <- testing[, 9] # replace with the appropriate column name
+scores <- model %>% evaluate(X_test, y_test)
+cat("Accuracy: ", scores[[2]], "\n")
+
 
 
 ```
