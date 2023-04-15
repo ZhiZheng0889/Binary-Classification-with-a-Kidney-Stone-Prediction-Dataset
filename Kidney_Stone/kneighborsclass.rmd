@@ -1,0 +1,55 @@
+```{r}
+# Load required packages
+library(caret)
+library(pROC)
+
+# Load the data
+train_data <- read.csv("train.csv")
+test_data <- read.csv("test.csv")
+
+# Preprocess the data
+x_train <- as.matrix(train_data[, -ncol(train_data)])
+y_train <- as.factor(train_data[, ncol(train_data)]) # Convert to factor
+x_test <- as.matrix(test_data[, -ncol(test_data)])
+y_test <- as.factor(test_data[, ncol(test_data)]) # Convert to factor
+
+# Check for missing columns in the test dataset and add them with zero values
+missing_columns <- setdiff(colnames(train_data), colnames(test_data))
+for (column in missing_columns) {
+  test_data[column] <- 0
+}
+x_test <- as.matrix(test_data[, colnames(train_data)[-ncol(train_data)]])
+
+# Normalize the data
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+x_train_normalized <- apply(x_train, 2, normalize)
+x_test_normalized <- apply(x_test, 2, normalize)
+
+# Set the number of neighbors (k)
+k <- 3
+
+# Train the KNN classifier using the caret package
+train_control <- trainControl(method = "none", classProbs = TRUE)
+knn_model <- train(x_train_normalized, y_train,
+                   method = "knn",
+                   trControl = train_control,
+                   tuneGrid = data.frame(k = k))
+
+# Make predictions and obtain predicted probabilities
+knn_predictions <- predict(knn_model, newdata = x_test_normalized)
+knn_probabilities <- predict(knn_model, newdata = x_test_normalized, type = "prob")
+
+# Evaluate the model
+accuracy <- sum(knn_predictions == y_test) / length(y_test)
+cat("Test accuracy:", accuracy, "\n")
+
+# Calculate AUC
+roc_obj <- roc(response = as.numeric(y_test) - 1, predictor = knn_probabilities[, 2])
+auc_score <- auc(roc_obj)
+cat("AUC:", auc_score, "\n")
+
+```
+

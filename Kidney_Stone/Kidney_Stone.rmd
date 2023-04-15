@@ -1,99 +1,65 @@
 ```{r}
-library(tidyverse)
-library(keras)
+#Install required libraries
+#install.packages("tensorflow")
+#install.packages("caret")
+#install.packages("keras")
+
+#Import the Libraries
 library(tensorflow)
 library(caret)
-library(devtools)
-library(conflicted)
-library(tensorflow)
-# Set the conflict resolution policy for filter() and lag() to "warn"
-conflict_prefer("filter", "dplyr")
-conflict_prefer("lag", "dplyr")
+library(magrittr)
+library(keras)
 
-library(reticulate)
-use_python(Sys.which("python"))
-
+# Load data
+training <- read.csv("train.csv")
+testing <- read.csv("test.csv")
 ```
 
 ```{r}
-library(reticulate)
+# Preprocess data
+x_train <- as.matrix(training[, -ncol(training)])
+y_train <- as.matrix(training[, ncol(training)])
+x_test <- as.matrix(testing[, -ncol(testing)])
+y_test <- as.matrix(testing[, ncol(testing)])
 
-# specify the path to your desired Python environment
-my_env <- "C:/Users/zhizh/Anaconda3/envs/my_env"
+# Add target column to testing data
+y_test <- data.frame(y_test)
+names(y_test) <- "target"
+testing_with_target <- cbind(testing, y_test)
 
-# activate the environment
-use_python(Sys.which("python"))
-Sys.setenv(RETICULATE_PYTHON = "C:/path/to/anaconda/python.exe")
-
-use_python(my_env)
-
-# check if tensorflow is installed in the environment
-py_installed_packages()$tensorflow
-
-# Verify that TensorFlow is working
-hello <- tf$constant('Hello, TensorFlow!')
-sess <- tf$Session()
-sess$run(hello)
-
-
-# Install numpy and pandas in the current conda environment
-library(reticulate)
-conda_install(c("numpy", "pandas"))
-
-# Load numpy and pandas
-library(numpy)
-library(pandas)
-
-```
-
-
-```{r}
-# Load the training dataset
-training <- read.csv("C:/Users/zhizh/OneDrive/Desktop/Kidney_Stone/train.csv")
-
-# Load the testing dataset
-testing <- read.csv("C:/Users/zhizh/OneDrive/Desktop/Kidney_Stone/test.csv")
-
-
-```
-
-
-```{r}
-
-# Split the data into input (X) and output (y) variables
-X_train <- training[, 1:8] # replace with the appropriate column names
-y_train <- training[, 8] # replace with the appropriate column name
-
-
-
-# Define the model architecture
+# Define model
 model <- keras_model_sequential() %>%
-  layer_dense(units = 12, input_shape = dim(X_train)[2], activation = "relu") %>%
+  layer_dense(units = 64, activation = "relu", input_shape = c(ncol(x_train))) %>%
+  layer_dropout(rate = 0.2) %>%
+  layer_dense(units = 32, activation = "relu") %>%
+  layer_dropout(rate = 0.2) %>%
   layer_dense(units = 1, activation = "sigmoid")
 
-# Compile the model
+# Compile model
 model %>% compile(
+  optimizer = optimizer_adam(learning_rate = 0.001),
   loss = "binary_crossentropy",
-  optimizer = "adam",
-  metrics = list("accuracy")
+  metrics = c("accuracy")
 )
 
-# Train the model
+# Train model
 history <- model %>% fit(
-  X_train, y_train,
-  epochs = 10,
-  batch_size = 32,
-  validation_split = 0.2
+  x = x_train,
+  y = y_train,
+  validation_split = 0.2,
+  epochs = 50,
+  batch_size = 32
 )
 
-# Evaluate the model on the test set
-testing <- read.csv("testing.csv")
-X_test <- testing[, 1:8] # replace with the appropriate column names
-y_test <- testing[, 9] # replace with the appropriate column name
-scores <- model %>% evaluate(X_test, y_test)
-cat("Accuracy: ", scores[[2]], "\n")
+# Evaluate model on test set
+scores <- model %>% evaluate(
+  x = as.matrix(testing_with_target[, -ncol(testing_with_target)]),
+  y = testing_with_target[, ncol(testing_with_target)],
+  verbose = 0
+)
 
-
+# Print test set accuracy
+cat("Test accuracy:", scores[[2]], "\n")
 
 ```
 
