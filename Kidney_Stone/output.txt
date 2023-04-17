@@ -1,3 +1,0 @@
-Test accuracy: 0 
-null device 
-          1 
