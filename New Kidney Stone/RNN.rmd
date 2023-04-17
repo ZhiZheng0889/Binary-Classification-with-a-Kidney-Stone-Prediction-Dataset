@@ -1,0 +1,81 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+# Install and load required packages
+install.packages("tidyverse")
+install.packages("keras")
+library(tidyverse)
+library(keras)
+
+# Read data
+train_data <- read_csv("train.csv", show_col_types = FALSE)
+test_data <- read_csv("test.csv", show_col_types = FALSE)
+
+# Preprocess data
+train_data <- train_data %>%
+  drop_na() %>%
+  mutate_if(is.character, as.factor)
+
+test_data <- test_data %>%
+  drop_na() %>%
+  mutate_if(is.character, as.factor)
+
+# Split data into features (X) and target (Y)
+target_variable <- "target"
+
+train_X <- train_data %>%
+  select(-one_of(target_variable)) %>%
+  as.matrix()
+
+train_Y <- train_data[[target_variable]]
+
+test_X <- test_data %>% # Do not remove the target variable here as it's not present in the test dataset
+  as.matrix()
+
+# Normalize the data
+train_X <- scale(train_X)
+test_X <- scale(test_X)
+
+# One-hot encode the target variable
+train_Y <- to_categorical(train_Y)
+
+# Define RNN model
+model <- keras_model_sequential() %>%
+  layer_lstm(units = 32, input_shape = c(ncol(train_X))) %>%
+  layer_dense(units = ncol(train_Y), activation = "softmax")
+
+# Compile the model
+model %>% compile(
+  loss = "categorical_crossentropy",
+  optimizer = optimizer_rmsprop(),
+  metrics = c("accuracy")
+)
+
+# Train the model
+history <- model %>% fit(
+  train_X, train_Y,
+  epochs = 50,
+  batch_size = 32,
+  validation_split = 0.2
+)
+
+# Predict on test dataset
+predicted_prob <- model %>% predict_proba(test_X)
+predicted_Y <- max.col(predicted_prob) - 1
+
+# Create submission dataframe with "id" and "target" columns
+submission <- data.frame(
+  id = test_data$id,
+  target = predicted_Y
+)
+
+# Write submission dataframe to a CSV file
+write_csv(submission, "RNNsubmission.csv")
+
+cat("Submission file 'submission.csv' created with predicted target values.\n")
+
+
+```

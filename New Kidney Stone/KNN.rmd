@@ -1,0 +1,58 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+# Load libraries
+library(tidyverse)
+library(caret)
+library(class)
+
+# Read data
+train_data <- read_csv("train.csv", show_col_types = FALSE)
+test_data <- read_csv("test.csv", show_col_types = FALSE)
+
+# Preprocess data
+train_data <- train_data %>%
+  drop_na() %>%
+  mutate_if(is.character, as.factor)
+
+test_data <- test_data %>%
+  drop_na() %>%
+  mutate_if(is.character, as.factor)
+
+# Split data into features (X) and target (Y)
+target_variable <- "target"
+
+train_X <- train_data %>%
+  select(-one_of(target_variable)) %>%
+  data.matrix()
+
+train_Y <- train_data[[target_variable]]
+
+test_X <- test_data %>% # Do not remove the target variable here as it's not present in the test dataset
+  data.matrix()
+
+# Create KNN model
+k <- 5 # Choose the number of neighbors
+predicted_Y <- knn(train_X, test_X, train_Y, k)
+
+# Create submission dataframe with "id" and "target" columns
+submission <- data.frame(
+  id = test_data$id,
+  target = predicted_Y
+)
+
+# Write submission dataframe to a CSV file
+write_csv(submission, "KNNsubmission.csv")
+
+cat("Submission file 'submission.csv' created with predicted target values.\n")
+
+
+```
+
+
+
+
+
