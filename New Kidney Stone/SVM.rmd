@@ -6,7 +6,8 @@ output: html_notebook
 ```{r}
 # Install and load required packages
 library(tidyverse)
-library(keras)
+library(e1071)
+library(caret)
 
 # Read data
 train_data <- read_csv("train.csv", show_col_types = FALSE)
@@ -37,36 +38,28 @@ test_X <- test_data %>% # Do not remove the target variable here as it's not pre
 train_X <- scale(train_X)
 test_X <- scale(test_X)
 
-# One-hot encode the target variable
-train_Y <- to_categorical(train_Y)
-
-# Reshape the input data for LSTM layer
-train_X <- array_reshape(train_X, c(nrow(train_X), ncol(train_X), 1))
-test_X <- array_reshape(test_X, c(nrow(test_X), ncol(test_X), 1))
-
-# Define RNN model
-model <- keras_model_sequential() %>%
-  layer_lstm(units = 32, input_shape = c(ncol(train_X), 1)) %>%
-  layer_dense(units = ncol(train_Y), activation = "softmax")
-
-# Compile the model
-model %>% compile(
-  loss = "categorical_crossentropy",
-  optimizer = optimizer_rmsprop(),
-  metrics = c("accuracy")
+# Hyperparameter tuning using cross-validation
+tuneGrid <- expand.grid(
+  C = 10^seq(-3, 3, length.out = 7),
+  sigma = 10^seq(-3, 3, length.out = 7)
 )
 
-# Train the model
-history <- model %>% fit(
-  train_X, train_Y,
-  epochs = 50,
-  batch_size = 32,
-  validation_split = 0.2
+ctrl <- trainControl(method = "cv", number = 5)
+
+svm_tune <- train(
+  x = train_X,
+  y = train_Y,
+  method = "svmRadial",
+  preProcess = c("center", "scale"),
+  tuneGrid = tuneGrid,
+  trControl = ctrl
 )
+
+# Train SVM model with optimal hyperparameters
+best_svm_model <- svm_tune$finalModel
 
 # Predict on test dataset
-predicted_prob <- model %>% predict(test_X)
-predicted_Y <- max.col(predicted_prob) - 1
+predicted_Y <- kernlab::predict(best_svm_model, test_X)
 
 
 # Create submission dataframe with "id" and "target" columns
@@ -76,9 +69,13 @@ submission <- data.frame(
 )
 
 # Write submission dataframe to a CSV file
-write_csv(submission, "RNNsubmission.csv")
+write_csv(submission, "submission.csv")
 
 cat("Submission file 'submission.csv' created with predicted target values.\n")
 
+# Visualization
+plot(svm_tune)
+
 
 ```
+
